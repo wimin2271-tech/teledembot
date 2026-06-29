@@ -29,7 +29,7 @@ def run_web_server():
 threading.Thread(target=run_web_server, daemon=True).start()
 
 # --- CODE BOT TELEGRAM CỦA BẠN ---
-TOKEN = '8475285725:AAGfVc1XoJ9padzX6sOkcF8YXvicn3Zof0g'
+TOKEN = '8475285725:AAGfVclXoJ9padzX6sOkcF8YXvicn3ZoF0g'
 bot = telebot.TeleBot(TOKEN)
 
 def init_db():
