@@ -4,7 +4,7 @@ import threading
 import http.server
 import socketserver
 import os
-from datetime import datetime
+import datetime  # <-- Đã thêm khai báo bắt buộc này để sửa lỗi sập sớm
 
 # --- KHỞI TẠO WEB SERVER ẢO ĐỂ CHẠY FREE TRÊN RENDER ---
 def run_web_server():
@@ -23,7 +23,7 @@ def run_web_server():
 threading.Thread(target=run_web_server, daemon=True).start()
 
 # --- CẤU HÌNH BOT TELEGRAM (BẠN ĐIỀN TOKEN THẬT CỦA BẠN VÀO ĐÂY) ---
-TOKEN = '8475285725:AAGfVclXoJ9padzX6sOkcF8YXvicn3ZoF0g' 
+TOKEN = '8475285725:AAGfVc1XoJ9padzX6sOkcF8YXvicn3Zof0g' 
 bot = telebot.TeleBot(TOKEN)
 
 # --- CƠ SỞ DỮ LIỆU LƯU FILE THỰC TẾ ---
@@ -33,8 +33,8 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS file_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tg_date TEXT,       -- Định dạng lưu: YYYY-MM-DD
-            tg_time TEXT,       -- Định dạng lưu: HH:MM:SS
+            tg_date TEXT,       
+            tg_time TEXT,       
             username TEXT,
             user_id TEXT,
             file_name TEXT
@@ -51,29 +51,23 @@ def save_file(date_str, time_str, username, user_id, file_name):
     conn.commit()
     conn.close()
 
-# --- LỆNH ĐIỀU KHIỂN CHÍNH (XUẤT BÁO CÁO GIỐNG ẢNH MẪU) ---
-
-# Cú pháp: /group xx88 Ngày/Tháng/Năm (Hoặc chỉ cần gõ /thongke)
+# --- LỆNH XUẤT BÁO CÁO THEO TỪNG THÀNH VIÊN GIỐNG ẢNH MẪU ---
 @bot.message_handler(commands=['group', 'thongke'])
 def export_group_report(message):
-    # Lấy ngày hiện tại làm mặc định nếu người dùng không gõ ngày cụ thể
-    target_date = datetime.now().strftime("%Y-%m-%d")
-    display_date = datetime.now().strftime("%d/%m/%Y")
+    target_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    display_date = datetime.datetime.now().strftime("%d/%m/%Y")
     
-    # Nếu người dùng gõ /group xx88 28/06/2026, tách chuỗi để lấy ngày
     args = message.text.split()
     if len(args) >= 3:
-        raw_date = args[2] # Lấy chuỗi "28/06/2026"
+        raw_date = args[2] 
         try:
-            # Chuyển đổi định dạng để truy vấn DB
-            target_date = datetime.strptime(raw_date, "%d/%m/%Y").strftime("%Y-%m-%d")
+            target_date = datetime.datetime.strptime(raw_date, "%d/%m/%Y").strftime("%Y-%m-%d")
             display_date = raw_date
         except:
             pass
 
     conn = sqlite3.connect('xx88_database.db')
     cursor = conn.cursor()
-    # Lấy toàn bộ file trong ngày được chọn
     cursor.execute('SELECT username, file_name FROM file_logs WHERE tg_date = ? ORDER BY id ASC', (target_date,))
     rows = cursor.fetchall()
     conn.close()
@@ -82,7 +76,6 @@ def export_group_report(message):
         bot.reply_to(message, f"📊 Không có dữ liệu file nào cho ngày {display_date}.")
         return
 
-    # Gom nhóm file theo từng thành viên
     user_files = {}
     total_files = len(rows)
     for username, file_name in rows:
@@ -90,10 +83,44 @@ def export_group_report(message):
             user_files[username] = []
         user_files[username].append(file_name)
 
-    # Xây dựng nội dung tin nhắn giống y hệt mẫu ảnh bạn gửi
     report = f"📊 **BÁO CÁO FILE NHÓM XX88**\n📅 Ngày {display_date}\n\n"
     
     for user, files in user_files.items():
         report += f"👤 @{user}: {len(files)} file\n"
         for f in files:
-            report
+            report += f"- {f}\n"
+        report += "\n" 
+        
+    report += f"✅ **Tổng XX88: {total_files} file**"
+    bot.reply_to(message, report, parse_mode='Markdown')
+
+# --- TỰ ĐỘNG LƯU FILE KHI THÀNH VIÊN GỬI VÀO NHÓM ---
+@bot.message_handler(content_types=['document', 'photo', 'audio', 'video'])
+def auto_log_file(message):
+    try:
+        file_name = "Không xác định"
+        
+        if message.content_type == 'document':
+            file_name = message.document.file_name
+        elif message.content_type == 'photo':
+            file_name = f"XT6_{message.photo[-1].file_id[:4]}.png" 
+        elif message.content_type in ['audio', 'video']:
+            media = message.audio if message.content_type == 'audio' else message.video
+            file_name = getattr(media, 'file_name', f"Media_{message.content_type}.mp4")
+
+        username = message.from_user.username or message.from_user.first_name
+        user_id = str(message.from_user.id)
+        
+        now = datetime.datetime.now()
+        date_str = now.strftime("%Y-%m-%d") 
+        time_str = now.strftime("%H:%M:%S")
+        
+        save_file(date_str, time_str, username, user_id, file_name)
+        
+    except Exception as e:
+        print(f"Lỗi: {e}")
+
+if __name__ == '__main__':
+    init_db()
+    print("Bot XX88 Group Running...")
+    bot.infinity_polling()
