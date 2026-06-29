@@ -1,5 +1,20 @@
 import telebot
 import sqlite3
+import threading
+import http.server
+import socketserver
+
+def run_web_server():
+    handler = http.server.SimpleHTTPRequestHandler
+    # Render sẽ tự động cấp một cổng thông qua biến PORT, nếu không có sẽ dùng cổng 8080
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    with socketserver.TCPServer(("", port), handler) as httpd:
+        print(f"Web server đang chạy ở cổng {port}")
+        httpd.serve_forever()
+
+# Chạy web server trong một luồng riêng biệt để không ảnh hưởng tới bot
+threading.Thread(target=run_web_server, daemon=True).start()
 from datetime import datetime
 
 TOKEN = '8475285725:AAGfVclXoJ9padzX6sOkcF8YXvicn3ZoF0g'
