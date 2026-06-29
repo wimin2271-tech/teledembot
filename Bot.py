@@ -3,17 +3,15 @@ import sqlite3
 import threading
 import http.server
 import socketserver
+import os  # <-- Nhớ có import os này để lấy cổng của Render
 
 def run_web_server():
     handler = http.server.SimpleHTTPRequestHandler
-    # Render sẽ tự động cấp một cổng thông qua biến PORT, nếu không có sẽ dùng cổng 8080
-    import os
     port = int(os.environ.get("PORT", 8080))
     with socketserver.TCPServer(("", port), handler) as httpd:
         print(f"Web server đang chạy ở cổng {port}")
         httpd.serve_forever()
 
-# Chạy web server trong một luồng riêng biệt để không ảnh hưởng tới bot
 threading.Thread(target=run_web_server, daemon=True).start()
 from datetime import datetime
 
@@ -123,4 +121,4 @@ def send_report(message):
 if __name__ == '__main__':
     init_db()
     print("Bot đang chạy...")
-    bot.infinity_polling()
+    bot.infinity_polling()  # <-- BẮT BUỘC phải có dòng này ở cuối cùng file
