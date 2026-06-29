@@ -46,9 +46,38 @@ def init_db():
     conn.commit()
     conn.close()
 
+# ... (Giữ nguyên phần đầu và phần khởi tạo database phía trên)
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     bot.reply_to(message, "Bot đếm file đã sẵn sàng! Hãy gửi file vào đây.")
+
+# ĐOẠN ĐƯỢC THÊM MỚI: Tự động bắt sự kiện khi người dùng gửi File (Tài liệu)
+@bot.message_handler(content_types=['document', 'photo', 'audio', 'video'])
+def handle_docs(message):
+    try:
+        # Lấy tên file (nếu là ảnh thì đặt tên mặc định)
+        if message.content_type == 'document':
+            file_name = message.document.file_name
+        else:
+            file_name = f"media_{message.content_type}_{message.message_id}"
+            
+        username = message.from_user.username or message.from_user.first_name
+        date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Gọi hàm lưu vào database của bạn
+        save_file(date_str, username, file_name)
+        
+        # Gửi lời nhắn đếm file lại cho bạn trên Telegram
+        bot.reply_to(message, f"✅ Đã nhận và đếm thành công file: {file_name}\n👤 Người gửi: {username}")
+        
+    except Exception as e:
+        bot.reply_to(message, f"Có lỗi xảy ra khi đếm file: {str(e)}")
+
+if __name__ == '__main__':
+    init_db()
+    print("Bot dang chay...")
+    bot.infinity_polling()
 
 def save_file(date_str, username, file_name):
     conn = sqlite3.connect(':memory:')
